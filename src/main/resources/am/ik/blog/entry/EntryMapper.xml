@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="am.ik.blog.entry.EntryMapper">
+    <resultMap id="entryId" type="am.ik.blog.entry.EntryId">
+        <constructor>
+            <idArg column="entry_id" javaType="long"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="title" type="am.ik.blog.entry.Title">
+        <constructor>
+            <arg column="title" javaType="string"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="content" type="am.ik.blog.entry.Content">
+        <constructor>
+            <arg column="content" javaType="string"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="createdBy" type="am.ik.blog.entry.Name">
+        <constructor>
+            <arg column="created_by" javaType="string"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="createdDate" type="am.ik.blog.entry.EventTime">
+        <constructor>
+            <arg column="created_date" javaType="java.time.OffsetDateTime"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="creator" type="am.ik.blog.entry.Author">
+        <constructor>
+            <arg resultMap="createdBy" javaType="am.ik.blog.entry.Name"/>
+            <arg resultMap="createdDate" javaType="am.ik.blog.entry.EventTime"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="lastModifiedBy" type="am.ik.blog.entry.Name">
+        <constructor>
+            <arg column="last_modified_by" javaType="string"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="lastModifiedDate" type="am.ik.blog.entry.EventTime">
+        <constructor>
+            <arg column="last_modified_date" javaType="java.time.OffsetDateTime"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="editor" type="am.ik.blog.entry.Author">
+        <constructor>
+            <arg resultMap="lastModifiedBy" javaType="am.ik.blog.entry.Name"/>
+            <arg resultMap="lastModifiedDate" javaType="am.ik.blog.entry.EventTime"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="tag" type="am.ik.blog.entry.Tag">
+        <constructor>
+            <arg column="tag_name" javaType="string"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="tags" type="am.ik.blog.entry.Tags">
+        <constructor>
+            <arg column="entry_id" select="findTag" javaType="list"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="category" type="am.ik.blog.entry.Category">
+        <constructor>
+            <arg column="category_name" javaType="string"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="categories" type="am.ik.blog.entry.Categories">
+        <constructor>
+            <arg column="entry_id" select="findCategory" javaType="list"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="frontMatter" type="am.ik.blog.entry.FrontMatter">
+        <constructor>
+            <arg resultMap="title" javaType="am.ik.blog.entry.Title"/>
+            <arg resultMap="categories" javaType="am.ik.blog.entry.Categories"/>
+            <arg resultMap="tags" javaType="am.ik.blog.entry.Tags"/>
+            <arg resultMap="createdDate" javaType="am.ik.blog.entry.EventTime"/>
+            <arg resultMap="lastModifiedDate" javaType="am.ik.blog.entry.EventTime"/>
+        </constructor>
+    </resultMap>
+    <resultMap id="entry" type="am.ik.blog.entry.Entry">
+        <constructor>
+            <idArg resultMap="entryId" javaType="am.ik.blog.entry.EntryId"/>
+            <arg resultMap="content" javaType="am.ik.blog.entry.Content"/>
+            <arg resultMap="creator" javaType="am.ik.blog.entry.Author"/>
+            <arg resultMap="editor" javaType="am.ik.blog.entry.Author"/>
+            <arg resultMap="frontMatter" javaType="am.ik.blog.entry.FrontMatter"/>
+        </constructor>
+    </resultMap>
+
+    <select id="findTag" resultMap="tag">
+        SELECT t.tag_name
+        FROM tag AS t INNER JOIN entry_tag AS et ON et.tag_name = t.tag_name
+        WHERE et.entry_id = #{entryId.value}
+        ORDER BY t.tag_name ASC
+    </select>
+    <select id="findCategory" resultMap="category">
+        SELECT category_name
+        FROM category
+        WHERE entry_id = #{entryId.value}
+        ORDER BY category_order ASC
+    </select>
+    <select id="findOne" resultMap="entry">
+        SELECT
+            entry_id,
+            title,
+            content,
+            created_by,
+            created_date,
+            last_modified_by,
+            last_modified_date
+        FROM entry
+        WHERE entry_id = #{entryId.value}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT count(*) FROM entry AS e
+        <include refid="join"/>
+        <include refid="searchCriteria"/>
+    </select>
+
+    <select id="findAll" resultMap="entry">
+        SELECT
+        e.entry_id,
+        e.title,
+        <choose>
+            <when test="!criteria.excludeContent">
+                e.content,
+            </when>
+            <otherwise>
+                '' as content,
+            </otherwise>
+        </choose>
+        e.created_by,
+        e.created_date,
+        e.last_modified_by,
+        e.last_modified_date
+        FROM entry AS e
+        <include refid="join"/>
+        <include refid="searchCriteria"/>
+
+        ORDER BY e.last_modified_date DESC
+        LIMIT
+        #{pageable.pageSize}
+        OFFSET
+        #{pageable.offset}
+    </select>
+
+    <sql id="join">
+        <choose>
+            <when test="criteria.categoryOrders != null">
+                LEFT JOIN category AS c ON e.entry_id = c.entry_id
+            </when>
+            <when test="criteria.tag != null">
+                LEFT JOIN entry_tag AS et ON e.entry_id = et.entry_id
+            </when>
+        </choose>
+    </sql>
+    <sql id="searchCriteria">
+        <where>
+            <if test="criteria.createdBy != null">
+                AND e.created_by = #{criteria.createdBy.value}
+            </if>
+            <if test="criteria.lastModifiedBy != null">
+                AND e.last_modified_by = #{criteria.lastModifiedBy.value}
+            </if>
+            <choose>
+                <when test="criteria.categoryOrders != null">
+                    <foreach collection="criteria.categoryOrders.getValue()" item="categoryOrder">
+                        <if test="categoryOrder.category != null">
+                            AND c.category_name = #{categoryOrder.category.value}
+                        </if>
+                        <if test="categoryOrder.categoryOrder != null">
+                            AND c.category_order = #{categoryOrder.categoryOrder}
+                        </if>
+                    </foreach>
+                </when>
+                <when test="criteria.tag != null">
+                    AND et.tag_name = #{criteria.tag.value}
+                </when>
+            </choose>
+        </where>
+    </sql>
+
+    <insert id="save" parameterType="am.ik.blog.entry.Entry">
+        INSERT INTO entry (entry_id,
+        title,
+        content,
+        created_by,
+        created_date,
+        last_modified_by,
+        last_modified_date)
+        VALUES (#{entryId.value}, #{frontMatter.title.value}, #{content.value}, #{created.name.value},
+        #{created.date.value}, #{updated.name.value}, #{updated.date.value})
+        ON DUPLICATE KEY UPDATE
+        title = #{frontMatter.title.value},
+        content = #{content.value},
+        created_by = #{created.name.value},
+        created_date = #{created.date.value},
+        last_modified_by = #{updated.name.value},
+        last_modified_date = #{updated.date.value};
+
+        DELETE FROM category
+        WHERE entry_id = #{entryId.value};
+        <foreach collection="frontMatter.getCategories().getValue()" index="index" item="category">
+            INSERT INTO category (category_name, category_order, entry_id) VALUES (#{category.value}, #{index},
+            #{entryId.value});
+        </foreach>
+
+        DELETE FROM entry_tag
+        WHERE entry_id = #{entryId.value};
+        <foreach collection="frontMatter.getTags().getValue()" item="tag">
+            INSERT INTO tag (tag_name) VALUES (#{tag.value}) ON DUPLICATE KEY UPDATE tag_name = #{tag.value};
+            INSERT INTO entry_tag (entry_id, tag_name) VALUES (#{entryId.value}, #{tag.value});
+        </foreach>
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM entry
+        WHERE entry_id = #{entryId.value}
+    </delete>
+</mapper>
