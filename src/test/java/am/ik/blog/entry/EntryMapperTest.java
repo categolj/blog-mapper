@@ -39,8 +39,14 @@ public class EntryMapperTest {
 
 	@Test
 	public void findOne() throws Exception {
-		Entry entry = entryMapper.findOne(new EntryId(99999L));
+		Entry entry = entryMapper.findOne(new EntryId(99999L), false);
 		assertEntry99999(entry, false);
+	}
+
+	@Test
+	public void findOneExcludeContent() throws Exception {
+		Entry entry = entryMapper.findOne(new EntryId(99999L), true);
+		assertEntry99999(entry, true);
 	}
 
 	@Test
@@ -110,25 +116,25 @@ public class EntryMapperTest {
 
 	@Test
 	public void insert() throws Exception {
-		Entry entry = entryMapper.findOne(new EntryId(99999L)).copy()
+		Entry entry = entryMapper.findOne(new EntryId(99999L), false).copy()
 				.entryId(new EntryId(89999L)).build();
 		entryMapper.save(entry);
-		assertThat(entryMapper.findOne(new EntryId(89999L))).isEqualTo(entry);
+		assertThat(entryMapper.findOne(new EntryId(89999L), false)).isEqualTo(entry);
 	}
 
 	@Test
 	public void update() throws Exception {
-		Entry entry = entryMapper.findOne(new EntryId(99999L)).copy()
+		Entry entry = entryMapper.findOne(new EntryId(99999L), false).copy()
 				.content(new Content("Updated")).build();
 		entryMapper.save(entry);
-		assertThat(entryMapper.findOne(new EntryId(99999L))).isEqualTo(entry);
+		assertThat(entryMapper.findOne(new EntryId(99999L), false)).isEqualTo(entry);
 	}
 
 	@Test
 	public void delete() throws Exception {
 		int count = entryMapper.delete(new EntryId(99999L));
 		assertThat(count).isEqualTo(1);
-		assertThat(entryMapper.findOne(new EntryId(99999L))).isNull();
+		assertThat(entryMapper.findOne(new EntryId(99999L), false)).isNull();
 	}
 
 	@Configuration

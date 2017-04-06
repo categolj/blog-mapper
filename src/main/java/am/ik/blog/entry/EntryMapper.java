@@ -15,7 +15,8 @@ import am.ik.blog.entry.criteria.SearchCriteria;
 public interface EntryMapper {
 	long count(@Param("criteria") SearchCriteria searchCriteria);
 
-	Entry findOne(@Param("entryId") EntryId entryId);
+	Entry findOne(@Param("entryId") EntryId entryId,
+			@Param("excludeContent") boolean excludeContent);
 
 	List<Entry> findAll(@Param("criteria") SearchCriteria searchCriteria,
 			@Param("pageable") Pageable pageable);

@@ -104,7 +104,14 @@
         SELECT
             entry_id,
             title,
-            content,
+        <choose>
+            <when test="!excludeContent">
+                content,
+            </when>
+            <otherwise>
+                '' as content,
+            </otherwise>
+        </choose>
             created_by,
             created_date,
             last_modified_by,
