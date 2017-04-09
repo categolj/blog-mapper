@@ -96,7 +96,7 @@ public class EntryMapperTest {
 	@Test
 	public void findPageByCategory() throws Exception {
 		SearchCriteria criteria = defaults()
-				.categoryOrders(new CategoryOrders().add(new Category("y"), 2)).build();
+				.categoryOrders(new CategoryOrders().add(new Category("y"), 1)).build();
 		Page<Entry> entries = entryMapper.findPage(criteria, new PageRequest(0, 10));
 		assertThat(entries.getTotalElements()).isEqualTo(2L);
 		List<Entry> content = entries.getContent();
