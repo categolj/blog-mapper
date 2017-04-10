@@ -1,5 +1,6 @@
 package am.ik.blog.entry;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -36,6 +37,28 @@ public class CategoryMapperTest {
 				.findConcatenatedCategoryLikeCategoryName("x,y");
 		assertThat(categories).hasSize(2);
 		assertThat(categories).containsExactly("x,y", "x,y,z");
+	}
+
+	@Test
+	public void findAll() throws Exception {
+		List<Categories> categories = categoryMapper.findAll();
+		assertThat(categories).hasSize(3);
+		assertThat(categories).containsExactly(
+				new Categories(
+						asList(new Category("a"), new Category("b"), new Category("c"))),
+				new Categories(asList(new Category("x"), new Category("y"))),
+				new Categories(
+						asList(new Category("x"), new Category("y"), new Category("z"))));
+	}
+
+	@Test
+	public void findLikeCategoryName() throws Exception {
+		List<Categories> categories = categoryMapper.findLikeCategoryName("x,y");
+		assertThat(categories).hasSize(2);
+		assertThat(categories).containsExactly(
+				new Categories(asList(new Category("x"), new Category("y"))),
+				new Categories(
+						asList(new Category("x"), new Category("y"), new Category("z"))));
 	}
 
 	@Configuration
