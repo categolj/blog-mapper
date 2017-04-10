@@ -38,13 +38,13 @@ public class EntryMapperTest {
 	@Test
 	public void findOne() throws Exception {
 		Entry entry = entryMapper.findOne(new EntryId(99999L), false);
-		assertEntry99999(entry, false);
+		assertEntry99999(entry).assertContent().assertFrontMatterDates();
 	}
 
 	@Test
 	public void findOneExcludeContent() throws Exception {
 		Entry entry = entryMapper.findOne(new EntryId(99999L), true);
-		assertEntry99999(entry, true);
+		assertEntry99999(entry).assertThatContentIsNotSet().assertFrontMatterDates();
 	}
 
 	@Test
@@ -54,9 +54,9 @@ public class EntryMapperTest {
 				new PageRequest(0, 10));
 		assertThat(entries.getTotalElements()).isEqualTo(3L);
 		List<Entry> content = entries.getContent();
-		assertEntry99999(content.get(0), false);
-		assertEntry99998(content.get(1), false);
-		assertEntry99997(content.get(2), false);
+		assertEntry99999(content.get(0)).assertContent().assertFrontMatterDates();
+		assertEntry99998(content.get(1)).assertContent().assertFrontMatterDates();
+		assertEntry99997(content.get(2)).assertContent().assertFrontMatterDates();
 	}
 
 	@Test
@@ -65,9 +65,12 @@ public class EntryMapperTest {
 				new PageRequest(0, 10));
 		assertThat(entries.getTotalElements()).isEqualTo(3L);
 		List<Entry> content = entries.getContent();
-		assertEntry99999(content.get(0), true);
-		assertEntry99998(content.get(1), true);
-		assertEntry99997(content.get(2), true);
+		assertEntry99999(content.get(0)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99998(content.get(1)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99997(content.get(2)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
 	}
 
 	@Test
@@ -76,8 +79,10 @@ public class EntryMapperTest {
 		Page<Entry> entries = entryMapper.findPage(criteria, new PageRequest(0, 10));
 		assertThat(entries.getTotalElements()).isEqualTo(2L);
 		List<Entry> content = entries.getContent();
-		assertEntry99999(content.get(0), true);
-		assertEntry99998(content.get(1), true);
+		assertEntry99999(content.get(0)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99998(content.get(1)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
 	}
 
 	@Test
@@ -86,9 +91,12 @@ public class EntryMapperTest {
 		Page<Entry> entries = entryMapper.findPage(criteria, new PageRequest(0, 10));
 		assertThat(entries.getTotalElements()).isEqualTo(3L);
 		List<Entry> content = entries.getContent();
-		assertEntry99999(content.get(0), true);
-		assertEntry99998(content.get(1), true);
-		assertEntry99997(content.get(2), true);
+		assertEntry99999(content.get(0)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99998(content.get(1)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99997(content.get(2)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
 	}
 
 	@Test
@@ -98,8 +106,10 @@ public class EntryMapperTest {
 		Page<Entry> entries = entryMapper.findPage(criteria, new PageRequest(0, 10));
 		assertThat(entries.getTotalElements()).isEqualTo(2L);
 		List<Entry> content = entries.getContent();
-		assertEntry99999(content.get(0), true);
-		assertEntry99997(content.get(1), true);
+		assertEntry99999(content.get(0)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99997(content.get(1)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
 	}
 
 	@Test
@@ -108,8 +118,10 @@ public class EntryMapperTest {
 		Page<Entry> entries = entryMapper.findPage(criteria, new PageRequest(0, 10));
 		assertThat(entries.getTotalElements()).isEqualTo(2L);
 		List<Entry> content = entries.getContent();
-		assertEntry99999(content.get(0), true);
-		assertEntry99997(content.get(1), true);
+		assertEntry99999(content.get(0)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99997(content.get(1)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
 	}
 
 	@Test
