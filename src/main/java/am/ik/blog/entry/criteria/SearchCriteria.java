@@ -15,6 +15,7 @@ public class SearchCriteria {
 	private Name lastModifiedBy;
 	private Tag tag;
 	private CategoryOrders categoryOrders;
+	private String keyword;
 
 	public static SearchCriteria.SearchCriteriaBuilder defaults() {
 		return SearchCriteria.builder().excludeContent(true);

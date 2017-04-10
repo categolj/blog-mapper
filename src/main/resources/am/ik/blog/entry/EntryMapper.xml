@@ -165,6 +165,10 @@
     </sql>
     <sql id="searchCriteria">
         <where>
+            <if test="criteria.keyword != null">
+                <bind name="condition" value="'%' + criteria.keyword + '%'"/>
+                AND e.content LIKE #{condition}
+            </if>
             <if test="criteria.createdBy != null">
                 AND e.created_by = #{criteria.createdBy.value}
             </if>

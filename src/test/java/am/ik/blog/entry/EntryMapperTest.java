@@ -125,6 +125,33 @@ public class EntryMapperTest {
 	}
 
 	@Test
+	public void findPageByKeyword() throws Exception {
+		SearchCriteria criteria = defaults().keyword("test").build();
+		Page<Entry> entries = entryMapper.findPage(criteria, new PageRequest(0, 10));
+		assertThat(entries.getTotalElements()).isEqualTo(3L);
+		List<Entry> content = entries.getContent();
+		assertEntry99999(content.get(0)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99998(content.get(1)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99997(content.get(2)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+	}
+
+	@Test
+	@Sql("classpath:/update-test-data-for-search.sql")
+	public void findPageByKeyword_ModifiedData() throws Exception {
+		SearchCriteria criteria = defaults().keyword("test").build();
+		Page<Entry> entries = entryMapper.findPage(criteria, new PageRequest(0, 10));
+		assertThat(entries.getTotalElements()).isEqualTo(2L);
+		List<Entry> content = entries.getContent();
+		assertEntry99999(content.get(0)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+		assertEntry99997(content.get(1)).assertThatContentIsNotSet()
+				.assertFrontMatterDates();
+	}
+
+	@Test
 	public void insert() throws Exception {
 		Entry entry = entryMapper.findOne(new EntryId(99999L), false).copy()
 				.entryId(new EntryId(89999L)).build();
