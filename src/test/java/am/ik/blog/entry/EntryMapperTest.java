@@ -139,7 +139,8 @@ public class EntryMapperTest {
 	}
 
 	@Test
-	@Sql("classpath:/update-test-data-for-search.sql")
+	@Sql({ "classpath:/delete-test-data.sql", "classpath:/insert-test-data.sql",
+			"classpath:/update-test-data-for-search.sql" })
 	public void findPageByKeyword_ModifiedData() throws Exception {
 		SearchCriteria criteria = defaults().keyword("test").build();
 		Page<Entry> entries = entryMapper.findPage(criteria, new PageRequest(0, 10));
