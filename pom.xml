@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
 
     <name>blog-mapper</name>
-    <description>Demo project for Spring Boot</description>
+    <description>Blog Mapper</description>
 
     <properties>
         <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -19,9 +19,6 @@
         <java.version>1.8</java.version>
         <flyway.version>4.1.2</flyway.version>
     </properties>
-    <name>blog-mapper</name>
-
-    <description>Blog Mapper</description>
 
     <licenses>
         <license>
