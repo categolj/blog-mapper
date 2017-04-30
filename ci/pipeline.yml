@@ -40,7 +40,7 @@ resources:
   - name: m2
     type: docker-image
     source:
-      repository: registry-192-168-11-210.sslip.io/making/blog-m2
+      repository: docker-192-168-11-210.sslip.io/making/blog-m2
       username: {{nexus-username}}
       password: {{nexus-password}}
   - name: slack-alert
