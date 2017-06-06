@@ -16,6 +16,7 @@ public class Asserts {
 				.containsExactly(new Tag("test1"), new Tag("test2"), new Tag("test3"));
 		assertThat(entry.frontMatter.categories.collect(toList()))
 				.containsExactly(new Category("x"), new Category("y"), new Category("z"));
+		assertThat(entry.isPremium()).isFalse();
 		return new IsContentExcluded(entry, new Content("This is a test data."),
 				new EventTime(
 						OffsetDateTime.of(2017, 4, 1, 1, 0, 0, 0, ZoneOffset.ofHours(9))),
@@ -31,6 +32,7 @@ public class Asserts {
 				.containsExactly(new Tag("test1"), new Tag("test2"));
 		assertThat(entry.frontMatter.categories.collect(toList()))
 				.containsExactly(new Category("a"), new Category("b"), new Category("c"));
+		assertThat(entry.isPremium()).isFalse();
 		return new IsContentExcluded(entry, new Content("This is a test data."),
 				new EventTime(
 						OffsetDateTime.of(2017, 4, 1, 0, 0, 0, 0, ZoneOffset.ofHours(9))),
@@ -46,6 +48,8 @@ public class Asserts {
 				.containsExactly(new Tag("test1"), new Tag("test3"));
 		assertThat(entry.frontMatter.categories.collect(toList()))
 				.containsExactly(new Category("x"), new Category("y"));
+		assertThat(entry.isPremium()).isTrue();
+		assertThat(entry.frontMatter.point).isEqualTo(new PremiumPoint(50));
 		return new IsContentExcluded(entry, new Content("This is a test data."),
 				new EventTime(OffsetDateTime.of(2017, 3, 31, 0, 0, 0, 0,
 						ZoneOffset.ofHours(9))),

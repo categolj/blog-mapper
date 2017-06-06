@@ -103,6 +103,7 @@ jobs:
               cd repo
               docker-compose up -d
               ${BASE_DIR}/utils/scripts/wait-until-port-available.sh localhost 3306
+              sleep 3 # hummm :S
               mvn test -Dmaven.repo.local=${M2_REPO}
               docker-compose down
         on_failure:

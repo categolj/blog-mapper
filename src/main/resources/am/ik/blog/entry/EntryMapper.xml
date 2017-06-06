@@ -69,6 +69,11 @@
             <arg column="entry_id" select="findCategory" javaType="list"/>
         </constructor>
     </resultMap>
+    <resultMap id="point" type="am.ik.blog.entry.PremiumPoint">
+        <constructor>
+            <arg column="point" javaType="integer"/>
+        </constructor>
+    </resultMap>
     <resultMap id="frontMatter" type="am.ik.blog.entry.FrontMatter">
         <constructor>
             <arg resultMap="title" javaType="am.ik.blog.entry.Title"/>
@@ -76,6 +81,7 @@
             <arg resultMap="tags" javaType="am.ik.blog.entry.Tags"/>
             <arg resultMap="createdDate" javaType="am.ik.blog.entry.EventTime"/>
             <arg resultMap="lastModifiedDate" javaType="am.ik.blog.entry.EventTime"/>
+            <arg resultMap="point" javaType="am.ik.blog.entry.PremiumPoint"/>
         </constructor>
     </resultMap>
     <resultMap id="entry" type="am.ik.blog.entry.Entry">
@@ -102,22 +108,24 @@
     </select>
     <select id="findOne" resultMap="entry">
         SELECT
-            entry_id,
-            title,
+        e.entry_id,
+        e.title,
         <choose>
             <when test="!excludeContent">
-                content,
+                e.content,
             </when>
             <otherwise>
                 '' as content,
             </otherwise>
         </choose>
-            created_by,
-            created_date,
-            last_modified_by,
-            last_modified_date
-        FROM entry
-        WHERE entry_id = #{entryId.value}
+        e.created_by,
+        e.created_date,
+        e.last_modified_by,
+        e.last_modified_date,
+        ep.point
+        FROM entry AS e
+        <include refid="joinPoint"/>
+        WHERE e.entry_id = #{entryId.value}
     </select>
 
     <select id="count" resultType="long">
@@ -141,9 +149,11 @@
         e.created_by,
         e.created_date,
         e.last_modified_by,
-        e.last_modified_date
+        e.last_modified_date,
+        ep.point
         FROM entry AS e
         <include refid="join"/>
+        <include refid="joinPoint"/>
         <include refid="searchCriteria"/>
 
         ORDER BY e.last_modified_date DESC
@@ -163,6 +173,11 @@
             </when>
         </choose>
     </sql>
+
+    <sql id="joinPoint">
+        LEFT JOIN entry_point AS ep ON (e.entry_id = ep.entry_id AND ep.thru = '9999-12-31 23:59:59')
+    </sql>
+
     <sql id="searchCriteria">
         <where>
             <if test="criteria.keyword != null">
@@ -224,6 +239,11 @@
             INSERT INTO tag (tag_name) VALUES (#{tag.value}) ON DUPLICATE KEY UPDATE tag_name = #{tag.value};
             INSERT INTO entry_tag (entry_id, tag_name) VALUES (#{entryId.value}, #{tag.value});
         </foreach>
+
+        UPDATE entry_point SET thru = now() WHERE entry_id = #{entryId.value} AND thru = '9999-12-31 23:59:59';
+        <if test="frontMatter.getPoint().isPremium()">
+            INSERT INTO entry_point(entry_id, point) VALUES(#{entryId.value}, #{frontMatter.point.value});
+        </if>
     </insert>
 
     <delete id="delete">

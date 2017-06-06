@@ -154,18 +154,88 @@ public class EntryMapperTest {
 
 	@Test
 	public void insert() throws Exception {
-		Entry entry = entryMapper.findOne(new EntryId(99999L), false).copy()
-				.entryId(new EntryId(89999L)).build();
+		Entry entry99999 = entryMapper.findOne(new EntryId(99999L), false);
+		Entry entry = entry99999.copy().entryId(new EntryId(89999L)).build();
 		entryMapper.save(entry);
-		assertThat(entryMapper.findOne(new EntryId(89999L), false)).isEqualTo(entry);
+		Entry saved = entryMapper.findOne(new EntryId(89999L), false);
+		assertThat(saved).isEqualTo(entry);
+		assertThat(saved.isPremium()).isFalse();
+	}
+
+	@Test
+	public void insertPremium() throws Exception {
+		Entry entry99997 = entryMapper.findOne(new EntryId(99997L), false);
+		Entry entry = entry99997.copy().entryId(new EntryId(89997L)).build();
+		entryMapper.save(entry);
+		Entry saved = entryMapper.findOne(new EntryId(89997L), false);
+		assertThat(saved).isEqualTo(entry);
+		assertThat(saved.isPremium()).isTrue();
+		assertThat(saved.frontMatter().point).isEqualTo(new PremiumPoint(50));
 	}
 
 	@Test
 	public void update() throws Exception {
-		Entry entry = entryMapper.findOne(new EntryId(99999L), false).copy()
-				.content(new Content("Updated")).build();
+		Entry entry99999 = entryMapper.findOne(new EntryId(99999L), false);
+		Entry entry = entry99999.copy().content(new Content("Updated")).build();
 		entryMapper.save(entry);
 		assertThat(entryMapper.findOne(new EntryId(99999L), false)).isEqualTo(entry);
+	}
+
+	@Test
+	public void updateFromNonPremiumToPremium() throws Exception {
+		Entry entry99999 = entryMapper.findOne(new EntryId(99999L), false);
+		assertThat(entry99999.isPremium()).isFalse();
+
+		FrontMatter frontMatter99999 = entry99999.getFrontMatter();
+		FrontMatter frontMatter = new FrontMatter(frontMatter99999.title,
+				frontMatter99999.categories, frontMatter99999.tags, frontMatter99999.date,
+				frontMatter99999.updated, new PremiumPoint(200));
+		Entry entry = entry99999.copy().content(new Content("Updated"))
+				.frontMatter(frontMatter).build();
+		entryMapper.save(entry);
+
+		Entry one = entryMapper.findOne(new EntryId(99999L), false);
+		assertThat(one).isEqualTo(entry);
+		assertThat(one.isPremium()).isTrue();
+		assertThat(one.frontMatter.point).isEqualTo(new PremiumPoint(200));
+	}
+
+	@Test
+	public void updateFromPremiumToNonPremium() throws Exception {
+		Entry entry99997 = entryMapper.findOne(new EntryId(99997L), false);
+		assertThat(entry99997.isPremium()).isTrue();
+
+		FrontMatter frontMatter99999 = entry99997.getFrontMatter();
+		FrontMatter frontMatter = new FrontMatter(frontMatter99999.title,
+				frontMatter99999.categories, frontMatter99999.tags, frontMatter99999.date,
+				frontMatter99999.updated, PremiumPoint.UNSET);
+		Entry entry = entry99997.copy().content(new Content("Updated"))
+				.frontMatter(frontMatter).build();
+		entryMapper.save(entry);
+
+		Entry one = entryMapper.findOne(new EntryId(99997L), false);
+		assertThat(one).isEqualTo(entry);
+		assertThat(one.isPremium()).isFalse();
+	}
+
+	@Test
+	public void updateChangePoint() throws Exception {
+		Entry entry99997 = entryMapper.findOne(new EntryId(99997L), false);
+		assertThat(entry99997.isPremium()).isTrue();
+		assertThat(entry99997.frontMatter.point).isEqualTo(new PremiumPoint(50));
+
+		FrontMatter frontMatter99999 = entry99997.getFrontMatter();
+		FrontMatter frontMatter = new FrontMatter(frontMatter99999.title,
+				frontMatter99999.categories, frontMatter99999.tags, frontMatter99999.date,
+				frontMatter99999.updated, new PremiumPoint(0));
+		Entry entry = entry99997.copy().content(new Content("Updated"))
+				.frontMatter(frontMatter).build();
+		entryMapper.save(entry);
+
+		Entry one = entryMapper.findOne(new EntryId(99997L), false);
+		assertThat(one).isEqualTo(entry);
+		assertThat(one.isPremium()).isTrue();
+		assertThat(one.frontMatter.point).isEqualTo(new PremiumPoint(0));
 	}
 
 	@Test
