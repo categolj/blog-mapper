@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import am.ik.blog.entry.criteria.SearchCriteria;
 @MybatisTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql({ "classpath:/delete-test-data.sql", "classpath:/insert-test-data.sql" })
+@EnableAutoConfiguration
 public class EntryMapperTest {
 	@Autowired
 	EntryMapper entryMapper;
