@@ -5,334 +5,571 @@ resource_types:
   source:
     repository: cfcommunity/slack-notification-resource
     tag: v1.1.3
+- name: maven
+  type: docker-image
+  source:
+    repository: pivotalpa/maven-resource
+    tag: 1.3.4
 resources:
-  - name: repo-prod
+  - name: repo-master
     type: git
     source:
       uri: git@github.com:categolj/blog-mapper.git
       branch: master
-      private_key: {{github-private-key}}
-  - name: repo-dev
+      private_key: ((github-private-key))
+  - name: repo-develop
     type: git
     source:
       uri: git@github.com:categolj/blog-mapper.git
       branch: develop
-      private_key: {{github-private-key}}
+      private_key: ((github-private-key))
   - name: repo-version
     type: semver
     source:
       uri: git@github.com:categolj/blog-mapper-version.git
       branch: master
-      private_key: {{github-private-key}}
+      private_key: ((github-private-key))
       file: version
       driver: git
       initial_version: 4.0.0
-  - name: utils
-    type: git
-    source:
-      uri: https://github.com/maki-home/concourse-utils
-      branch: master
   - name: gpg
     type: git
     source:
       uri: https://github.com/maki-home/encrypted-gpg
       branch: master
-  - name: m2
-    type: docker-image
-    source:
-      repository: docker-192-168-11-210.sslip.io/making/blog-m2
-      username: {{nexus-username}}
-      password: {{nexus-password}}
   - name: slack-alert
     type: slack-notification
     source:
-      url: {{slack-webhook-url}}
+      url: ((slack-webhook-url))
   - name: mysql
     type: docker-image
     source:
-      repository: docker-192-168-11-210.sslip.io/mariadb
-      username: {{nexus-username}}
-      password: {{nexus-password}}
-      tag: "10.0.30"
-  - name: dcind-jdk
-    type: docker-image
-    source:
-      repository: docker-192-168-11-210.sslip.io/making/dcind-jdk
-      tag: support-overlay
-      username: {{nexus-username}}
-      password: {{nexus-password}}
+      repository: mariadb
+      tag: 10.0.30
 jobs:
-  ### Dev
-  - name: unit-test-dev
-    plan:
-      - aggregate:
-        - get: repo
-          resource: repo-dev
-          trigger: true
-        - get: utils
-        - get: m2
-        - get: dcind-jdk
-        - get: mysql
-          params:
-            save: true
-      - task: unit
-        privileged: true
-        image: dcind-jdk
+### Dev
+- name: unit-test-develop
+  plan:
+    - aggregate:
+      - get: repo
+        resource: repo-develop
+        trigger: true
+      - get: mysql
         params:
-          _JAVA_OPTIONS: -Duser.timezone=Asia/Tokyo -Duser.language=ja -Duser.country=JP -Djava.security.egd=file:/dev/./urandom
-        config: &UNIT_TEST
-          platform: linux
-          inputs:
-          - name: repo
-          - name: mysql
-          - name: m2
-          - name: utils
-          run:
-            path: sh
-            args:
-            - -c
-            - |
-              set -e
-              BASE_DIR=`pwd`
-              M2_REPO=${BASE_DIR}/m2/rootfs/opt/m2
-              source /docker-lib.sh
-              start_docker
-              docker load -i mysql/image
-              docker tag "$(cat mysql/image-id)" "$(cat mysql/repository):$(cat mysql/tag)"
-              docker images
-              ${BASE_DIR}/utils/scripts/add-repos-in-pom-xml.sh repo
-              cd repo
-              docker-compose up -d
-              ${BASE_DIR}/utils/scripts/wait-until-port-available.sh localhost 3306
-              sleep 3 # hummm :S
-              mvn test -Dmaven.repo.local=${M2_REPO}
-              docker-compose down
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-  - name: deploy-to-nexus-dev
-    plan:
-      - aggregate:
-        - get: repo
-          resource: repo-dev
-          trigger: true
-          passed:
-          - unit-test-dev
-        - get: utils
-        - get: m2
-      - task: deploy
-        file: utils/tasks/deploy-to-nexus.yml
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
+          save: true
+    - task: mvn-test
+      privileged: true
+      params:
+        <<: *JAVA_OPS
+      config: &MVN_TEST_CONFIG
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: making/dcind-jdk
+        inputs:
+        - name: repo
+        - name: mysql
+        caches:
+        - path: repo/m2   
+        run:
+          path: sh
+          args:
+          - -c
+          - |
+            set -e
+
+            source /docker-lib.sh
+            start_docker
+            docker load -i mysql/image
+            docker tag "$(cat mysql/image-id)" "$(cat mysql/repository):$(cat mysql/tag)"
+            docker images
+
+            cd repo
+            rm -rf ~/.m2
+            ln -fs $(pwd)/m2 ~/.m2
+
+            docker-compose up -d
+            sleep 3
+            mvn test
+            docker-compose down
+      on_failure:
+        put: slack-alert
         params:
-          NEXUS_USERNAME: {{nexus-username}}
-          NEXUS_PASSWORD: {{nexus-password}}
-  ### Prod
-  - name: merge-develop-to-master
-    plan:
-      - aggregate:
-        - get: repo-other
-          resource: repo-prod
-        - get: repo-dev
-          passed:
-          - deploy-to-nexus-dev
-        - get: utils
-      - task: merge-develop-to-master
-        file: utils/tasks/merge-develop-to-other.yml
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
+          <<: *SLACK_FAILURE
+- name: upload-to-nexus-snapshots
+  plan:
+  - get: repo
+    resource: repo-develop
+    passed:
+    - unit-test-develop
+    trigger: true
+  - task: mvn-package
+    config: &NEXUS_PACKAGE_CONFIG
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: maven
+      inputs:
+      - name: repo
+      outputs:
+      - name: build
+      caches:
+      - path: repo/m2
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e
+          cd repo
+          rm -rf ~/.m2
+          ln -fs $(pwd)/m2 ~/.m2
+          mvn package -DskipTests=true
+          cp target/*.jar ../build/
+  - aggregate:
+    - task: mvn-deploy-nexus
+      params:
+        NEXUS_URL: ((nexus-snapshot-url))
+        NEXUS_USERNAME: ((nexus-username))
+        NEXUS_PASSWORD: ((nexus-password))
+      config: &MNN_DEPLOY
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: maven
+        inputs:
+        - name: repo
+        outputs:
+        - name: build
+        caches:
+        - path: repo/m2
+        run:
+          path: bash
+          args:
+          - -c
+          - |
+            set -e
+            cd repo
+            rm -rf ~/.m2
+            ln -fs $(pwd)/m2 ~/.m2
+            cat > settings.xml <<EOF
+            <settings>
+              <servers>
+                <server>
+                   <id>repo</id>
+                   <username>${NEXUS_USERNAME}</username>
+                   <password>${NEXUS_PASSWORD}</password>
+                </server>
+              </servers>
+            </settings>
+            EOF
+            mvn deploy -s settings.xml -DskipTests=true -DaltDeploymentRepository=repo::default::${NEXUS_URL} -Dmaven.wagon.http.ssl.insecure=true -D maven.wagon.http.ssl.ignore.validity.dates=true
+      on_failure:
+        put: slack-alert
         params:
-          GIT_EMAIL: {{git-email}}
-          GIT_NAME: {{git-name}}
-      - put: repo-prod
+          <<: *SLACK_FAILURE
+    - task: mvn-deploy-sonatype
+      params:
+        NEXUS_URL: https://oss.sonatype.org/content/repositories/snapshots
+        NEXUS_USERNAME: ((sonatype-username))
+        NEXUS_PASSWORD: ((sonatype-password))
+      config:
+        <<: *MNN_DEPLOY
+      on_failure:
+        put: slack-alert
         params:
-          repository: other-out
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-  - name: unit-test-prod
-    plan:
-      - aggregate:
-        - get: repo
-          resource: repo-prod
-          trigger: true
-          passed:
-          - merge-develop-to-master
-        - get: utils
-        - get: m2
-        - get: dcind-jdk
-        - get: mysql
-          params:
-            save: true
-      - task: unit
-        privileged: true
-        image: dcind-jdk
-        params:
-          _JAVA_OPTIONS: -Duser.timezone=Asia/Tokyo -Duser.language=ja -Duser.country=JP -Djava.security.egd=file:/dev/./urandom
-        config:
-          <<: *UNIT_TEST
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-  - name: tag-master
-    plan:
-      - aggregate:
-        - get: repo-prod
-          passed:
-          - unit-test-prod
-          trigger: true
-        - get: repo-version
-        - get: utils
-        - get: m2
-      - task: bump-to-release-version
-        file: utils/tasks/bump-to-release-version.yml
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-        params:
-          GIT_EMAIL: {{git-email}}
-          GIT_NAME: {{git-name}}
-      - put: repo-prod
-        params:
-          repository: master-out
-          tag: repo-version/number
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-  - name: deploy-to-nexus-prod
-    plan:
-      - aggregate:
-        - get: repo
-          resource: repo-prod
-          trigger: true
-          passed:
-          - tag-master
-        - get: utils
-        - get: m2
-      - task: deploy
-        file: utils/tasks/deploy-to-nexus.yml
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-        params:
-          NEXUS_USERNAME: {{nexus-username}}
-          NEXUS_PASSWORD: {{nexus-password}}
-  - name: deploy-to-central-prod
-    plan:
-      - aggregate:
-        - get: repo
-          resource: repo-prod
-          trigger: true
-          passed:
-          - tag-master
-        - get: utils
-        - get: gpg
-        - get: m2
-      - task: deploy
-        file: utils/tasks/deploy-to-central.yml
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-        params:
-          SONATYPE_USERNAME: {{sonatype-username}}
-          SONATYPE_PASSWORD: {{sonatype-password}}
-          ENCRYPTION_PASSWORD: {{gpg-encryption-password}}
-          GPG_DIR: .
-          GPG_KEYNAME: {{gpg-keyname}}
-          GPG_PASSPHRASE: {{gpg-passphrase}}
-  - name: bump-to-next-minor-version
-    plan:
-      - aggregate:
-        - get: repo-staging
-          resource: repo-dev
-        - get: repo-prod
-          passed:
-          - deploy-to-nexus-prod
-          - deploy-to-central-prod
-          trigger: true
-        - get: repo-version
-          params:
-            bump: minor
-        - get: utils
-        - get: m2
-      - task: bump-to-next-minor-version
-        file: utils/tasks/bump-to-next-develop-version.yml
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-        params:
-          GIT_EMAIL: {{git-email}}
-          GIT_NAME: {{git-name}}
-      - put: repo-dev
-        params:
-          repository: release-out
-        on_success:
-          put: slack-alert
-          params:
-            <<: *SLACK_SUCCESS
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-      - put: repo-version
-        params:
-          file: repo-version/number
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-  - name: bump-to-next-patch-version
-    plan:
-      - aggregate:
-        - get: repo-staging
-          resource: repo-dev
-        - get: repo-prod
-        - get: repo-version
-          params:
-            bump: patch
-        - get: utils
-        - get: m2
-      - task: bump-to-next-patch-version
-        file: utils/tasks/bump-to-next-develop-version.yml
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-        params:
-          GIT_EMAIL: {{git-email}}
-          GIT_NAME: {{git-name}}
-      - put: repo-dev
-        params:
-          repository: release-out
-        on_success:
-          put: slack-alert
-          params:
-            <<: *SLACK_SUCCESS
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
-      - put: repo-version
-        params:
-          file: repo-version/number
-        on_failure:
-          put: slack-alert
-          params:
-            <<: *SLACK_FAILURE
+          <<: *SLACK_FAILURE
+
+### Prod
+- name: merge-develop-to-master
+  plan:
+  - aggregate:
+    - get: repo-src
+      resource: repo-develop
+      passed:
+      - upload-to-nexus-snapshots
+    - get: repo-dest
+      resource: repo-master
+  - task: merge-develop-to-master
+    params:
+      <<: *GIT_PARAMS
+      SRC_BRANCH: develop
+    config: &MERGE_SRC_TO_DEST
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: maven
+      inputs:
+      - name: repo-src
+      - name: repo-dest
+      outputs:
+      - name: merged 
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e
+          shopt -s dotglob
+          mv -f repo-dest/* merged/
+          cd merged
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_NAME}"
+          git remote add -f src ../repo-src
+          git merge --no-edit src/${SRC_BRANCH}
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE         
+  - put: repo-master
+    params:
+      repository: merged
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE
+- name: unit-test-master
+  plan:
+  - aggregate:
+    - get: repo
+      resource: repo-master
+      trigger: true
+      passed:
+      - merge-develop-to-master      
+    - get: mysql
+      params:
+        save: true
+  - task: mvn-test
+    privileged: true
+    params:
+      <<: *JAVA_OPS
+    config:
+      <<: *MVN_TEST_CONFIG
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+- name: tag-master
+  plan:
+  - aggregate:
+    - get: repo
+      resource: repo-master
+      trigger: true
+      passed:
+      - unit-test-master
+    - get: repo-version
+  - task: mvn-versions-set
+    params:
+      <<: *GIT_PARAMS
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: maven
+      inputs:
+      - name: repo
+      - name: repo-version
+      outputs:
+      - name: output
+      caches:
+      - path: repo/m2   
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e
+          VERSION=`cat repo-version/number`
+          cd repo
+          rm -rf ~/.m2
+          ln -fs $(pwd)/m2 ~/.m2
+          mvn versions:set -DnewVersion=${VERSION}
+          rm -f pom.xml.versionsBackup
+          shopt -s dotglob
+          shopt -s extglob
+          mv -f !(m2) ../output/
+          cd ../output
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_NAME}"
+          git add -A
+          git commit -m "Release ${VERSION}"
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+  - put: repo-master
+    params:
+      repository: output
+      tag: repo-version/number
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+- name: upload-to-nexus-releases
+  plan:
+  - get: repo
+    resource: repo-master
+    passed:
+    - tag-master
+    trigger: true
+  - task: mvn-package
+    config:
+      <<: *NEXUS_PACKAGE_CONFIG
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+  - task: mvn-deploy-nexus
+    params:
+      NEXUS_URL: ((nexus-release-url))
+      NEXUS_USERNAME: ((nexus-username))
+      NEXUS_PASSWORD: ((nexus-password))
+    config:
+      <<: *MNN_DEPLOY
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE
+- name: upload-to-sonatype-releases
+  plan:
+  - aggregate:
+    - get: repo
+      resource: repo-master
+      passed:
+      - tag-master
+      trigger: true
+    - get: gpg
+  - task: mvn-deploy
+    params:
+      SONATYPE_USERNAME: ((sonatype-username))
+      SONATYPE_PASSWORD: ((sonatype-password)) 
+      GPG_KEYNAME: ((gpg-keyname))
+      GPG_PASSPHRASE: ((gpg-passphrase))
+      ENCRYPTION_PASSWORD: ((gpg-encryption-password))
+      GPG_DIR: .
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: maven
+          tag: 3.3.9-jdk-8 # openssl 1.0.1 needed
+      inputs:
+      - name: repo
+      - name: gpg
+      outputs:
+      - name: signed
+      caches:
+      - path: repo/m2
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e
+          mkdir -p ~/.gnupg
+          openssl version
+          gpg/deceypt-pgp.sh repo
+          cd repo
+          rm -rf ~/.m2
+          ln -fs $(pwd)/m2 ~/.m2
+          cat > settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                 <id>repo</id>
+                 <username>${SONATYPE_USERNAME}</username>
+                 <password>${SONATYPE_PASSWORD}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+          mvn javadoc:jar \
+              source:jar \
+              package \
+              org.apache.maven.plugins:maven-gpg-plugin:1.6:sign \
+              org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy \
+              -s settings.xml \
+              -Dgpg.executable=gpg \
+              -Dgpg.keyname=${GPG_KEYNAME} \
+              -Dgpg.passphrase=${GPG_PASSPHRASE} \
+              -Dgpg.defaultKeyring=false \
+              -Dgpg.publicKeyring=./pubring.gpg \
+              -Dgpg.secretKeyring=./secring.gpg \
+              -DserverId=repo \
+              -DnexusUrl=https://oss.sonatype.org \
+              -DautoReleaseAfterClose=true \
+              -DaltDeploymentRepository=repo::default::https://oss.sonatype.org/service/local/staging/deploy/maven2 \
+              -DskipTests=true
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE
+- name: bump-to-next-patch-version
+  plan:
+  - aggregate:
+    - get: repo-src
+      resource: repo-master
+      passed:
+      - upload-to-nexus-releases
+      - upload-to-sonatype-releases
+      trigger: true
+    - get: repo-dest
+      resource: repo-develop
+    - get: repo-version
+      params:
+        bump: patch
+  - task: merge-master-to-develop
+    params:
+      <<: *GIT_PARAMS
+      SRC_BRANCH: master
+    config:
+      <<: *MERGE_SRC_TO_DEST
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+  - task: just-move
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: maven
+      inputs:
+      - name: merged
+      outputs:
+      - name: repo
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e
+          shopt -s dotglob
+          cp -r merged/* repo/
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+  - task: mvn-versions-set
+    params:
+      <<: *GIT_PARAMS
+    config: &MVN_VERSIONS_SET_CONFIG
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: maven
+      inputs:
+      - name: repo
+      - name: repo-version
+      outputs:
+      - name: output
+      caches:
+      - path: repo/m2   
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e
+          VERSION=`cat repo-version/number`-SNAPSHOT
+          cd repo
+          rm -rf ~/.m2
+          ln -fs $(pwd)/m2 ~/.m2
+          mvn versions:set -DnewVersion=${VERSION} -DallowSnapshots
+          rm -f pom.xml.versionsBackup
+          shopt -s dotglob
+          shopt -s extglob
+          mv -f !(m2) ../output/
+          cd ../output
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_NAME}"
+          git add -A
+          git commit -m "Bump to ${VERSION}"
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+  - put: repo-develop
+    params:
+      repository: output
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+  - put: repo-version
+    params:
+      file: repo-version/number
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+    on_success:
+      put: slack-alert
+      params:
+        <<: *SLACK_SUCCESS
+- name: bump-to-next-minor-version
+  plan:
+  - aggregate:
+    - get: repo
+      resource: repo-develop
+    - get: repo-version
+      params:
+        bump: minor
+  - task: mvn-versions-set
+    params:
+      <<: *GIT_PARAMS
+    config:
+      <<: *MVN_VERSIONS_SET_CONFIG
+  - put: repo-develop
+    params:
+      repository: output
+  - put: repo-version
+    params:
+      file: repo-version/number
+- name: bump-to-next-major-version
+  plan:
+  - aggregate:
+    - get: repo
+      resource: repo-develop
+    - get: repo-version
+      params:
+        bump: major
+  - task: mvn-versions-set
+    params:
+      <<: *GIT_PARAMS
+    config:
+      <<: *MVN_VERSIONS_SET_CONFIG
+  - put: repo-develop
+    params:
+      repository: output
+  - put: repo-version
+    params:
+      file: repo-version/number
+    on_failure:
+      put: slack-alert
+      params:
+        <<: *SLACK_FAILURE 
+    on_success:
+      put: slack-alert
+      params:
+        <<: *SLACK_SUCCESS
+
 
 params:
+  git: &GIT_PARAMS
+    GIT_EMAIL: ((git-email))
+    GIT_NAME: ((git-name))
+    SRC_BRANCH: develop
+  java_opts: &JAVA_OPS
+    _JAVA_OPTIONS: -Duser.timezone=Asia/Tokyo -Duser.language=ja -Duser.country=JP -Djava.security.egd=file:/dev/./urandom
   slack_on_success_params: &SLACK_SUCCESS
     channel: '#concourse'
     text: |
