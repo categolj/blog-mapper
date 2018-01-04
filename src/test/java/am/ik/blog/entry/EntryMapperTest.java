@@ -23,7 +23,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 import am.ik.blog.entry.criteria.CategoryOrders;
 import am.ik.blog.entry.criteria.SearchCriteria;
 import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 @RunWith(SpringRunner.class)
@@ -253,7 +252,6 @@ public class EntryMapperTest {
 	@Test
 	public void collectAll() throws Exception {
 		Flux<Entry> entries = entryMapper.collectAll(DEFAULT, new PageRequest(0, 10))
-				.subscribeOn(Schedulers.elastic()) //
 				.log("entry");
 
 		StepVerifier.create(entries)
