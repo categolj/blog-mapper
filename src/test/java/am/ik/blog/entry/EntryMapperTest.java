@@ -1,6 +1,7 @@
 package am.ik.blog.entry;
 
 import static am.ik.blog.entry.Asserts.*;
+import static am.ik.blog.entry.criteria.SearchCriteria.DEFAULT;
 import static am.ik.blog.entry.criteria.SearchCriteria.defaults;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,6 +22,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import am.ik.blog.entry.criteria.CategoryOrders;
 import am.ik.blog.entry.criteria.SearchCriteria;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
+import reactor.test.StepVerifier;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration
@@ -34,7 +38,7 @@ public class EntryMapperTest {
 
 	@Test
 	public void count() throws Exception {
-		assertThat(entryMapper.count(SearchCriteria.DEFAULT)).isEqualTo(3L);
+		assertThat(entryMapper.count(DEFAULT)).isEqualTo(3L);
 	}
 
 	@Test
@@ -63,8 +67,7 @@ public class EntryMapperTest {
 
 	@Test
 	public void findPageDefault() throws Exception {
-		Page<Entry> entries = entryMapper.findPage(SearchCriteria.DEFAULT,
-				new PageRequest(0, 10));
+		Page<Entry> entries = entryMapper.findPage(DEFAULT, new PageRequest(0, 10));
 		assertThat(entries.getTotalElements()).isEqualTo(3L);
 		List<Entry> content = entries.getContent();
 		assertEntry99999(content.get(0)).assertThatContentIsNotSet()
@@ -245,6 +248,22 @@ public class EntryMapperTest {
 		int count = entryMapper.delete(new EntryId(99999L));
 		assertThat(count).isEqualTo(1);
 		assertThat(entryMapper.findOne(new EntryId(99999L), false)).isNull();
+	}
+
+	@Test
+	public void collectAll() throws Exception {
+		Flux<Entry> entries = entryMapper.collectAll(DEFAULT, new PageRequest(0, 10))
+				.subscribeOn(Schedulers.elastic()) //
+				.log("entry");
+
+		StepVerifier.create(entries)
+				.assertNext(e -> assertEntry99999(e).assertThatContentIsNotSet()
+						.assertFrontMatterDates())
+				.assertNext(e -> assertEntry99998(e).assertThatContentIsNotSet()
+						.assertFrontMatterDates())
+				.assertNext(e -> assertEntry99997(e).assertThatContentIsNotSet()
+						.assertFrontMatterDates())
+				.verifyComplete();
 	}
 
 	@Configuration

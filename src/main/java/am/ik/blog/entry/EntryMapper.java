@@ -5,11 +5,13 @@ import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.session.ResultHandler;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import am.ik.blog.entry.criteria.SearchCriteria;
+import reactor.core.publisher.Flux;
 
 @Mapper
 public interface EntryMapper {
@@ -20,6 +22,9 @@ public interface EntryMapper {
 
 	List<Entry> findAll(@Param("criteria") SearchCriteria searchCriteria,
 			@Param("pageable") Pageable pageable);
+
+	void collectAll(@Param("criteria") SearchCriteria searchCriteria,
+			@Param("pageable") Pageable pageable, ResultHandler<Entry> handler);
 
 	void save(Entry entry);
 
@@ -33,5 +38,15 @@ public interface EntryMapper {
 		else {
 			return new PageImpl<>(findAll(searchCriteria, pageable), pageable, count);
 		}
+	}
+
+	default Flux<Entry> collectAll(SearchCriteria searchCriteria, Pageable pageable) {
+		return Flux.create(sink -> {
+			EntryMapper.this.collectAll(searchCriteria, pageable, context -> {
+				Entry entry = context.getResultObject();
+				sink.next(entry);
+			});
+			sink.complete();
+		});
 	}
 }

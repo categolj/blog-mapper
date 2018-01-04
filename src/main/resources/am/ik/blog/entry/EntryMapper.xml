@@ -134,7 +134,26 @@
         <include refid="searchCriteria"/>
     </select>
 
-    <select id="findAll" resultMap="entry">
+    <select id="findAll" resultMap="entry" resultOrdered="true">
+        <include refid="findAllSql" />
+    </select>
+
+    <select id="collectAll" resultMap="entry" resultOrdered="true">
+        <include refid="findAllSql" />
+    </select>
+
+    <sql id="join">
+        <choose>
+            <when test="criteria.categoryOrders != null">
+                LEFT JOIN category AS c ON e.entry_id = c.entry_id
+            </when>
+            <when test="criteria.tag != null">
+                LEFT JOIN entry_tag AS et ON e.entry_id = et.entry_id
+            </when>
+        </choose>
+    </sql>
+
+    <sql id="findAllSql">
         SELECT
         e.entry_id,
         e.title,
@@ -161,17 +180,6 @@
         #{pageable.pageSize}
         OFFSET
         #{pageable.offset}
-    </select>
-
-    <sql id="join">
-        <choose>
-            <when test="criteria.categoryOrders != null">
-                LEFT JOIN category AS c ON e.entry_id = c.entry_id
-            </when>
-            <when test="criteria.tag != null">
-                LEFT JOIN entry_tag AS et ON e.entry_id = et.entry_id
-            </when>
-        </choose>
     </sql>
 
     <sql id="joinPoint">
