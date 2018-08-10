@@ -1,15 +1,10 @@
 package am.ik.blog.entry;
 
-import static java.util.stream.Collectors.toList;
-
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+import static java.util.stream.Collectors.toList;
 
-@Mapper
 public interface CategoryMapper {
 	default List<Categories> findAll() {
 		return findAllConcatenatedCategory().stream()
@@ -25,9 +20,7 @@ public interface CategoryMapper {
 				.collect(toList());
 	}
 
-	@Select("SELECT DISTINCT GROUP_CONCAT(DISTINCT category_name ORDER BY category_order ASC SEPARATOR ',') category FROM category GROUP BY entry_id ORDER BY category")
 	List<String> findAllConcatenatedCategory();
 
-	List<String> findConcatenatedCategoryLikeCategoryName(
-			@Param("categoryName") String categoryName);
+	List<String> findConcatenatedCategoryLikeCategoryName(String categoryName);
 }

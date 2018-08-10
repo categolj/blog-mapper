@@ -1,18 +1,20 @@
 package am.ik.blog.entry;
 
-import static am.ik.blog.entry.Asserts.*;
-import static am.ik.blog.entry.criteria.SearchCriteria.DEFAULT;
-import static am.ik.blog.entry.criteria.SearchCriteria.defaults;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.List;
 
+import am.ik.blog.entry.criteria.CategoryOrders;
+import am.ik.blog.entry.criteria.SearchCriteria;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,17 +22,18 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import am.ik.blog.entry.criteria.CategoryOrders;
-import am.ik.blog.entry.criteria.SearchCriteria;
-import reactor.core.publisher.Flux;
-import reactor.test.StepVerifier;
+import static am.ik.blog.entry.Asserts.*;
+import static am.ik.blog.entry.criteria.SearchCriteria.DEFAULT;
+import static am.ik.blog.entry.criteria.SearchCriteria.defaults;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration
-@MybatisTest
+@JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql({ "classpath:/delete-test-data.sql", "classpath:/insert-test-data.sql" })
 @EnableAutoConfiguration
+@ComponentScan(basePackages = "am.ik.blog.entry.jdbc")
 public class EntryMapperTest {
 	@Autowired
 	EntryMapper entryMapper;
@@ -163,10 +166,13 @@ public class EntryMapperTest {
 		entryMapper.save(entry);
 		Entry saved = entryMapper.findOne(new EntryId(89999L), false);
 		assertThat(saved).isEqualTo(entry);
-		assertThat(saved.isPremium()).isFalse();
+		// premium service is no longer supported
+		// assertThat(saved.isPremium()).isFalse();
 	}
 
 	@Test
+	// premium service is no longer supported
+	@Ignore
 	public void insertPremium() throws Exception {
 		Entry entry99997 = entryMapper.findOne(new EntryId(99997L), false);
 		Entry entry = entry99997.copy().entryId(new EntryId(89997L)).build();
@@ -186,6 +192,8 @@ public class EntryMapperTest {
 	}
 
 	@Test
+	// premium service is no longer supported
+	@Ignore
 	public void updateFromNonPremiumToPremium() throws Exception {
 		Entry entry99999 = entryMapper.findOne(new EntryId(99999L), false);
 		assertThat(entry99999.isPremium()).isFalse();
@@ -205,6 +213,8 @@ public class EntryMapperTest {
 	}
 
 	@Test
+	// premium service is no longer supported
+	@Ignore
 	public void updateFromPremiumToNonPremium() throws Exception {
 		Entry entry99997 = entryMapper.findOne(new EntryId(99997L), false);
 		assertThat(entry99997.isPremium()).isTrue();
@@ -223,6 +233,8 @@ public class EntryMapperTest {
 	}
 
 	@Test
+	// premium service is no longer supported
+	@Ignore
 	public void updateChangePoint() throws Exception {
 		Entry entry99997 = entryMapper.findOne(new EntryId(99997L), false);
 		assertThat(entry99997.isPremium()).isTrue();
@@ -238,7 +250,8 @@ public class EntryMapperTest {
 
 		Entry one = entryMapper.findOne(new EntryId(99997L), false);
 		assertThat(one).isEqualTo(entry);
-		assertThat(one.isPremium()).isTrue();
+		// premium service is no longer supported
+		// assertThat(one.isPremium()).isTrue();
 		assertThat(one.frontMatter.point).isEqualTo(new PremiumPoint(0));
 	}
 
