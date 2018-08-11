@@ -111,6 +111,7 @@
                     <artifactId>spring-cloud-commons</artifactId>
                 </exclusion>
             </exclusions>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
