@@ -53,8 +53,9 @@ public class EntryJdbcMapper implements EntryMapper {
 				+ (excludeContent ? "" : ", e.content")
 				+ ", e.created_by, e.created_date, e.last_modified_by, e.last_modified_date, c.category_name"
 				+ " FROM entry AS e LEFT OUTER JOIN category AS c ON e.entry_id = c.entry_id"
-				+ " WHERE e.entry_id = :entry_id" + " ORDER BY c.category_order ASC",
-				source, EntryExtractors.forEntry(excludeContent)) //
+				+ " WHERE e.entry_id = :entry_id" //
+				+ " ORDER BY c.category_order ASC", source,
+				EntryExtractors.forEntry(excludeContent)) //
 				.map(e -> {
 					List<Tag> tags = this.jdbcTemplate.query(
 							"SELECT tag_name FROM entry_tag WHERE entry_id = :entry_id",
