@@ -82,16 +82,6 @@ public class SearchCriteria {
 			this.params = params;
 		}
 
-		public String clauseForEntry() {
-			return this.clause.entrySet().stream() //
-					.filter(e -> {
-						String key = e.getKey();
-						return !key.startsWith("category") && !key.equals("tag");
-					}) //
-					.map(Map.Entry::getValue) //
-					.collect(Collectors.joining(" "));
-		}
-
 		public String clauseForEntryId() {
 			return this.clause.values().stream().collect(Collectors.joining(" "));
 		}

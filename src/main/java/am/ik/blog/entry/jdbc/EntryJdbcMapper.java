@@ -96,11 +96,11 @@ public class EntryJdbcMapper implements EntryMapper {
 				source, (rs, i) -> rs.getLong("entry_id"));
 	}
 
-	String sqlForEntries(boolean excludeContent, ClauseAndParams clauseAndParams) {
+	String sqlForEntries(boolean excludeContent) {
 		return "SELECT e.entry_id, e.title" + (excludeContent ? "" : ", e.content")
 				+ ", e.created_by, e.created_date, e.last_modified_by, e.last_modified_date, c.category_name"
 				+ " FROM entry AS e LEFT JOIN category AS c ON e.entry_id = c.entry_id "
-				+ " WHERE e.entry_id IN (:entry_ids) " + clauseAndParams.clauseForEntry()
+				+ " WHERE e.entry_id IN (:entry_ids)"
 				+ " ORDER BY e.last_modified_date DESC, c.category_order ASC";
 	}
 
@@ -114,9 +114,8 @@ public class EntryJdbcMapper implements EntryMapper {
 		source.addValue("entry_ids", ids);
 		boolean excludeContent = searchCriteria.isExcludeContent();
 		Map<EntryId, Tags> tagsMap = this.tagsMap(ids);
-		List<Entry> entries = this.jdbcTemplate.query(
-				this.sqlForEntries(excludeContent, clauseAndParams), source,
-				EntryExtractors.forEntries(excludeContent));
+		List<Entry> entries = this.jdbcTemplate.query(this.sqlForEntries(excludeContent),
+				source, EntryExtractors.forEntries(excludeContent));
 		return entries.stream() //
 				.map(e -> {
 					FrontMatter fm = e.getFrontMatter();
@@ -142,20 +141,19 @@ public class EntryJdbcMapper implements EntryMapper {
 		boolean excludeContent = searchCriteria.isExcludeContent();
 		Map<EntryId, Tags> tagsMap = this.tagsMap(ids);
 		return Flux.create(sink -> {
-			this.jdbcTemplate.query(this.sqlForEntries(excludeContent, clauseAndParams),
-					source, rs -> {
-						EntryExtractors.withEntries(rs, e -> {
-							FrontMatter fm = e.getFrontMatter();
-							EntryId entryId = e.getEntryId();
-							Categories categories = fm.categories();
-							Tags tags = tagsMap.get(entryId);
-							Entry entry = e.copy() //
-									.frontMatter(new FrontMatter(fm.title(), categories,
-											tags, fm.date(), fm.updated()))
-									.build();
-							sink.next(entry);
-						}, excludeContent);
-					});
+			this.jdbcTemplate.query(this.sqlForEntries(excludeContent), source, rs -> {
+				EntryExtractors.withEntries(rs, e -> {
+					FrontMatter fm = e.getFrontMatter();
+					EntryId entryId = e.getEntryId();
+					Categories categories = fm.categories();
+					Tags tags = tagsMap.get(entryId);
+					Entry entry = e.copy() //
+							.frontMatter(new FrontMatter(fm.title(), categories, tags,
+									fm.date(), fm.updated()))
+							.build();
+					sink.next(entry);
+				}, excludeContent);
+			});
 			sink.complete();
 		});
 	}
