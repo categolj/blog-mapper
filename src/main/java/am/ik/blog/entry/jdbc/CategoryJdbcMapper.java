@@ -4,6 +4,7 @@ import java.util.List;
 
 import am.ik.blog.entry.CategoryMapper;
 
+import org.springframework.cloud.sleuth.annotation.NewSpan;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -17,6 +18,7 @@ public class CategoryJdbcMapper implements CategoryMapper {
 	}
 
 	@Override
+	@NewSpan
 	public List<String> findAllConcatenatedCategory() {
 		return this.jdbcTemplate.query(
 				"SELECT DISTINCT GROUP_CONCAT(DISTINCT category_name ORDER BY category_order ASC SEPARATOR ',') category"
@@ -27,6 +29,7 @@ public class CategoryJdbcMapper implements CategoryMapper {
 	}
 
 	@Override
+	@NewSpan
 	public List<String> findConcatenatedCategoryLikeCategoryName(String categoryName) {
 		MapSqlParameterSource source = new MapSqlParameterSource()
 				.addValue("category_name", categoryName + "%");

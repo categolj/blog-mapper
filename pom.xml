@@ -17,6 +17,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
+        <spring-cloud.version>Finchley.SR1</spring-cloud.version>
     </properties>
 
     <licenses>
@@ -66,6 +67,52 @@
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-sleuth-core</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave-context-log4j2</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave-instrumentation-spring-web</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave-instrumentation-spring-rabbit</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave-instrumentation-kafka-clients</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave-instrumentation-http</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave-instrumentation-httpclient</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave-instrumentation-httpasyncclient</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.zipkin.brave</groupId>
+                    <artifactId>brave-instrumentation-spring-webmvc</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-commons</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
             <optional>true</optional>
@@ -93,6 +140,13 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>2.0.4.RELEASE</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

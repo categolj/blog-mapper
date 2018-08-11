@@ -11,6 +11,8 @@ import reactor.core.publisher.Flux;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import org.springframework.cloud.sleuth.annotation.NewSpan;
+import org.springframework.cloud.sleuth.annotation.SpanTag;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -29,6 +31,7 @@ public class EntryJdbcMapper implements EntryMapper {
 	}
 
 	@Override
+	@NewSpan
 	public long count(SearchCriteria searchCriteria) {
 		ClauseAndParams clauseAndParams = searchCriteria.toWhereClause();
 		MapSqlParameterSource source = new MapSqlParameterSource();
@@ -41,7 +44,9 @@ public class EntryJdbcMapper implements EntryMapper {
 	}
 
 	@Override
-	public Entry findOne(EntryId entryId, boolean excludeContent) {
+	@NewSpan
+	public Entry findOne(@SpanTag("entryId") EntryId entryId,
+			@SpanTag("excludeContent") boolean excludeContent) {
 		MapSqlParameterSource source = new MapSqlParameterSource() //
 				.addValue("entry_id", entryId.getValue());
 		return this.jdbcTemplate.query("SELECT e.entry_id, e.title"
@@ -99,6 +104,7 @@ public class EntryJdbcMapper implements EntryMapper {
 	}
 
 	@Override
+	@NewSpan
 	public List<Entry> findAll(SearchCriteria searchCriteria, Pageable pageable) {
 		ClauseAndParams clauseAndParams = searchCriteria.toWhereClause();
 		MapSqlParameterSource source = new MapSqlParameterSource();
@@ -125,6 +131,7 @@ public class EntryJdbcMapper implements EntryMapper {
 	}
 
 	@Override
+	@NewSpan
 	public Flux<Entry> collectAll(SearchCriteria searchCriteria, Pageable pageable) {
 		ClauseAndParams clauseAndParams = searchCriteria.toWhereClause();
 		MapSqlParameterSource source = new MapSqlParameterSource();
@@ -153,6 +160,7 @@ public class EntryJdbcMapper implements EntryMapper {
 	}
 
 	@Override
+	@NewSpan
 	@Transactional
 	public void save(Entry entry) {
 		FrontMatter frontMatter = entry.frontMatter();
@@ -208,8 +216,9 @@ public class EntryJdbcMapper implements EntryMapper {
 	}
 
 	@Override
+	@NewSpan
 	@Transactional
-	public int delete(EntryId entryId) {
+	public int delete(@SpanTag("entryId") EntryId entryId) {
 		MapSqlParameterSource source = new MapSqlParameterSource().addValue("entry_id",
 				entryId.getValue());
 		return this.jdbcTemplate.update("DELETE FROM entry WHERE entry_id = :entry_id",
