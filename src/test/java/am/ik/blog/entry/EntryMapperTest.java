@@ -1,5 +1,7 @@
 package am.ik.blog.entry;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import am.ik.blog.entry.criteria.CategoryOrders;
@@ -195,6 +197,21 @@ public class EntryMapperTest {
 				.assertNext(e -> assertEntry99997(e).assertThatContentIsNotSet()
 						.assertFrontMatterDates())
 				.verifyComplete();
+	}
+
+	@Test
+	public void testLatestModifiedDate() throws Exception {
+		EventTime lastModifiedDate = entryMapper.findLatestModifiedDate();
+		assertThat(lastModifiedDate).isEqualTo(new EventTime(
+				OffsetDateTime.of(2017, 4, 1, 2, 0, 0, 0, ZoneOffset.ofHours(9))));
+	}
+
+	@Test
+	public void testLastModifiedDate() throws Exception {
+		EventTime lastModifiedDate = entryMapper
+				.findLastModifiedDate(new EntryId(99998L));
+		assertThat(lastModifiedDate).isEqualTo(new EventTime(
+				OffsetDateTime.of(2017, 4, 1, 0, 0, 0, 0, ZoneOffset.ofHours(9))));
 	}
 
 	@Configuration

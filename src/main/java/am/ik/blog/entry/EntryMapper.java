@@ -17,6 +17,10 @@ public interface EntryMapper {
 
 	List<Entry> findAll(SearchCriteria searchCriteria, Pageable pageable);
 
+	EventTime findLatestModifiedDate();
+
+	EventTime findLastModifiedDate(EntryId entryId);
+
 	void save(Entry entry);
 
 	int delete(EntryId entryId);

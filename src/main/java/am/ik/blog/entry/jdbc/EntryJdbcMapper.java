@@ -1,5 +1,7 @@
 package am.ik.blog.entry.jdbc;
 
+import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,6 +22,7 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import static am.ik.blog.entry.jdbc.EntryExtractors.zoneOffset;
 import static java.util.stream.Collectors.*;
 
 @Repository
@@ -222,5 +225,26 @@ public class EntryJdbcMapper implements EntryMapper {
 				entryId.getValue());
 		return this.jdbcTemplate.update("DELETE FROM entry WHERE entry_id = :entry_id",
 				source);
+	}
+
+	@Override
+	public EventTime findLatestModifiedDate() {
+		return this.jdbcTemplate.queryForObject(
+				"SELECT last_modified_date FROM entry ORDER BY last_modified_date DESC LIMIT 1",
+				Collections.emptyMap(),
+				(rs, i) -> new EventTime(OffsetDateTime.of(
+						rs.getTimestamp("last_modified_date").toLocalDateTime(),
+						zoneOffset)));
+	}
+
+	@Override
+	public EventTime findLastModifiedDate(EntryId entryId) {
+		MapSqlParameterSource source = new MapSqlParameterSource() //
+				.addValue("entry_id", entryId.getValue());
+		return this.jdbcTemplate.queryForObject(
+				"SELECT last_modified_date FROM entry WHERE entry_id = :entry_id", source,
+				(rs, i) -> new EventTime(OffsetDateTime.of(
+						rs.getTimestamp("last_modified_date").toLocalDateTime(),
+						zoneOffset)));
 	}
 }
