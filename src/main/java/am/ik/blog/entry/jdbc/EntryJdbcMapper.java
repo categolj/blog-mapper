@@ -140,7 +140,8 @@ public class EntryJdbcMapper implements EntryMapper {
 			ClauseAndParams clauseAndParams = searchCriteria.toWhereClause();
 			MapSqlParameterSource source = new MapSqlParameterSource();
 			source.addValues(clauseAndParams.params());
-			List<Long> ids = this.entryIds(searchCriteria, pageable, clauseAndParams, source);
+			List<Long> ids = this.entryIds(searchCriteria, pageable, clauseAndParams,
+					source);
 			source.addValue("entry_ids", ids);
 			boolean excludeContent = searchCriteria.isExcludeContent();
 			Map<EntryId, Tags> tagsMap = this.tagsMap(ids);
@@ -228,6 +229,7 @@ public class EntryJdbcMapper implements EntryMapper {
 	}
 
 	@Override
+	@NewSpan
 	public EventTime findLatestModifiedDate() {
 		return this.jdbcTemplate.queryForObject(
 				"SELECT last_modified_date FROM entry ORDER BY last_modified_date DESC LIMIT 1",
@@ -238,7 +240,8 @@ public class EntryJdbcMapper implements EntryMapper {
 	}
 
 	@Override
-	public EventTime findLastModifiedDate(EntryId entryId) {
+	@NewSpan
+	public EventTime findLastModifiedDate(@SpanTag("entryId") EntryId entryId) {
 		MapSqlParameterSource source = new MapSqlParameterSource() //
 				.addValue("entry_id", entryId.getValue());
 		return this.jdbcTemplate.queryForObject(
