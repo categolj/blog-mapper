@@ -136,14 +136,14 @@ public class EntryJdbcMapper implements EntryMapper {
 	@Override
 	@NewSpan
 	public Flux<Entry> collectAll(SearchCriteria searchCriteria, Pageable pageable) {
-		ClauseAndParams clauseAndParams = searchCriteria.toWhereClause();
-		MapSqlParameterSource source = new MapSqlParameterSource();
-		source.addValues(clauseAndParams.params());
-		List<Long> ids = this.entryIds(searchCriteria, pageable, clauseAndParams, source);
-		source.addValue("entry_ids", ids);
-		boolean excludeContent = searchCriteria.isExcludeContent();
-		Map<EntryId, Tags> tagsMap = this.tagsMap(ids);
 		return Flux.create(sink -> {
+			ClauseAndParams clauseAndParams = searchCriteria.toWhereClause();
+			MapSqlParameterSource source = new MapSqlParameterSource();
+			source.addValues(clauseAndParams.params());
+			List<Long> ids = this.entryIds(searchCriteria, pageable, clauseAndParams, source);
+			source.addValue("entry_ids", ids);
+			boolean excludeContent = searchCriteria.isExcludeContent();
+			Map<EntryId, Tags> tagsMap = this.tagsMap(ids);
 			this.jdbcTemplate.query(this.sqlForEntries(excludeContent), source, rs -> {
 				EntryExtractors.withEntries(rs, e -> {
 					FrontMatter fm = e.getFrontMatter();
